@@ -15,7 +15,7 @@
  */
 
 #include QMK_KEYBOARD_H
-#include "keyboards/cipulot/ec_leila/ec_switch_matrix.h"
+#include "keyboards/cipulot/leila/ec/ec_switch_matrix.h"
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     // clang-format off
