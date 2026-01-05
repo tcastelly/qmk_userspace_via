@@ -116,9 +116,11 @@ void via_config_set_value(uint8_t *data) {
             for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
                 for (uint8_t c = 0; c < MATRIX_COLS; c++) {
                     ec_config.key_state[r][c].switch_type = val;
+                    eeprom_ec_config.key_state[r][c].switch_type = val;
                 }
             }
             rescale_all_keys();
+            eeconfig_update_kb_datablock(&eeprom_ec_config, 0, EECONFIG_KB_DATA_SIZE);
             if (val == 0) {
                 uprintf("#####################\n");
                 uprintf("#  Switch Type: EC  #\n");
@@ -135,9 +137,11 @@ void via_config_set_value(uint8_t *data) {
             for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
                 for (uint8_t c = 0; c < MATRIX_COLS; c++) {
                     ec_config.key_state[r][c].actuation_mode = val;
+                    eeprom_ec_config.key_state[r][c].actuation_mode = val;
                 }
             }
             rescale_all_keys();
+            eeconfig_update_kb_datablock(&eeprom_ec_config, 0, EECONFIG_KB_DATA_SIZE);
             if (val == 0) {
                 uprintf("#########################\n");
                 uprintf("#  Actuation Mode: APC  #\n");
@@ -477,6 +481,26 @@ void ec_save_bottoming_reading(void) {
 
 // Show the calibration data
 void ec_show_calibration_data(void) {
+    uprintf("\n################\n");
+    uprintf("# Switch Type  #\n");
+    uprintf("################\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", eeprom_ec_config.key_state[row][col].switch_type);
+        }
+        uprintf("%4d\n", eeprom_ec_config.key_state[row][MATRIX_COLS - 1].switch_type);
+    }
+
+    uprintf("\n##################\n");
+    uprintf("# Actuation Mode #\n");
+    uprintf("##################\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", eeprom_ec_config.key_state[row][col].actuation_mode);
+        }
+        uprintf("%4d\n", eeprom_ec_config.key_state[row][MATRIX_COLS - 1].actuation_mode);
+    }
+
     uprintf("\n###############\n");
     uprintf("# Noise Floor #\n");
     uprintf("###############\n");
@@ -485,6 +509,16 @@ void ec_show_calibration_data(void) {
             uprintf("%4d,", ec_config.key_state[row][col].noise_floor);
         }
         uprintf("%4d\n", ec_config.key_state[row][MATRIX_COLS - 1].noise_floor);
+    }
+
+    uprintf("\n############\n");
+    uprintf("# Extremum #\n");
+    uprintf("############\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", ec_config.key_state[row][col].extremum);
+        }
+        uprintf("%4d\n", ec_config.key_state[row][MATRIX_COLS - 1].extremum);
     }
 
     uprintf("\n######################\n");
@@ -498,9 +532,10 @@ void ec_show_calibration_data(void) {
     }
 
     uprintf("\n######################################\n");
-    uprintf("# Rescaled APC Mode Actuation Points #\n");
+    uprintf("# APC Mode Actuation Threshold       #\n");
     uprintf("######################################\n");
-    uprintf("Original APC Mode Actuation Point: %4d\n", eeprom_ec_config.key_state[0][0].apc_actuation_threshold);
+    uprintf("Original Value: %4d\n", eeprom_ec_config.key_state[0][0].apc_actuation_threshold);
+    uprintf("Rescaled Values:\n");
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", ec_config.key_state[row][col].rescaled_apc_actuation_threshold);
@@ -509,9 +544,10 @@ void ec_show_calibration_data(void) {
     }
 
     uprintf("\n######################################\n");
-    uprintf("# Rescaled APC Mode Release Points   #\n");
+    uprintf("# APC Mode Release Threshold         #\n");
     uprintf("######################################\n");
-    uprintf("Original APC Mode Release Point: %4d\n", eeprom_ec_config.key_state[0][0].apc_release_threshold);
+    uprintf("Original Value: %4d\n", eeprom_ec_config.key_state[0][0].apc_release_threshold);
+    uprintf("Rescaled Values:\n");
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", ec_config.key_state[row][col].rescaled_apc_release_threshold);
@@ -520,14 +556,39 @@ void ec_show_calibration_data(void) {
     }
 
     uprintf("\n#######################################################\n");
-    uprintf("# Rescaled Rapid Trigger Mode Initial Deadzone Offset #\n");
+    uprintf("# Rapid Trigger Mode Initial Deadzone Offset          #\n");
     uprintf("#######################################################\n");
-    uprintf("Original Rapid Trigger Mode Initial Deadzone Offset: %4d\n", eeprom_ec_config.key_state[0][0].rt_initial_deadzone_offset);
+    uprintf("Original Value: %4d\n", eeprom_ec_config.key_state[0][0].rt_initial_deadzone_offset);
+    uprintf("Rescaled Values:\n");
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", ec_config.key_state[row][col].rescaled_rt_initial_deadzone_offset);
         }
         uprintf("%4d\n", ec_config.key_state[row][MATRIX_COLS - 1].rescaled_rt_initial_deadzone_offset);
+    }
+
+    uprintf("\n#######################################################\n");
+    uprintf("# Rapid Trigger Mode Actuation Offset                 #\n");
+    uprintf("#######################################################\n");
+    uprintf("Original Value: %4d\n", eeprom_ec_config.key_state[0][0].rt_actuation_offset);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", ec_config.key_state[row][col].rescaled_rt_actuation_offset);
+        }
+        uprintf("%4d\n", ec_config.key_state[row][MATRIX_COLS - 1].rescaled_rt_actuation_offset);
+    }
+
+    uprintf("\n#######################################################\n");
+    uprintf("# Rapid Trigger Mode Release Offset                   #\n");
+    uprintf("#######################################################\n");
+    uprintf("Original Value: %4d\n", eeprom_ec_config.key_state[0][0].rt_release_offset);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", ec_config.key_state[row][col].rescaled_rt_release_offset);
+        }
+        uprintf("%4d\n", ec_config.key_state[row][MATRIX_COLS - 1].rescaled_rt_release_offset);
     }
     print("\n");
 }
@@ -551,22 +612,38 @@ uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t 
         switch (field) {
             case 0: // enabled
                 eeprom_ec_config.socd_opposing_pairs[pair_idx].resolution = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0]    = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1]    = false;
                 socd_opposing_pairs[pair_idx].resolution                  = value;
+                socd_opposing_pairs[pair_idx].held[0]                     = false;
+                socd_opposing_pairs[pair_idx].held[1]                     = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             case 1: // key 1
                 eeprom_ec_config.socd_opposing_pairs[pair_idx].keys[0] = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0] = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1] = false;
                 socd_opposing_pairs[pair_idx].keys[0]                  = value;
+                socd_opposing_pairs[pair_idx].held[0]                  = false;
+                socd_opposing_pairs[pair_idx].held[1]                  = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             case 2: // key 2
                 eeprom_ec_config.socd_opposing_pairs[pair_idx].keys[1] = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0] = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1] = false;
                 socd_opposing_pairs[pair_idx].keys[1]                  = value;
+                socd_opposing_pairs[pair_idx].held[0]                  = false;
+                socd_opposing_pairs[pair_idx].held[1]                  = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             case 3: // mode/resolution
                 eeprom_ec_config.socd_opposing_pairs[pair_idx].resolution = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0]    = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1]    = false;
                 socd_opposing_pairs[pair_idx].resolution                  = value;
+                socd_opposing_pairs[pair_idx].held[0]                     = false;
+                socd_opposing_pairs[pair_idx].held[1]                     = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             default:
