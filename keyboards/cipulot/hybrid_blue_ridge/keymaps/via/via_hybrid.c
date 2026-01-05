@@ -22,12 +22,12 @@
 
 #ifdef VIA_ENABLE
 
-void     ec_rescale_values(uint8_t item);
-void     ec_save_threshold_data(uint8_t option);
-void     ec_save_bottoming_reading(void);
-void     ec_show_calibration_data(void);
-void     ec_clear_bottoming_calibration_data(void);
-uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t value);
+static void     ec_save_threshold_data(void);
+static void     ec_save_bottoming_reading(void);
+static void     ec_show_calibration_data(void);
+static void     ec_clear_bottoming_calibration_data(void);
+static uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t value);
+
 static void rescale_all_keys(void) {
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
@@ -37,13 +37,14 @@ static void rescale_all_keys(void) {
 }
 
 // Macro to apply a value to a field across all keys and rescale
-#define APPLY_TO_ALL_KEYS(field, val) do { \
-    for (uint8_t r = 0; r < MATRIX_ROWS; r++) { \
-        for (uint8_t c = 0; c < MATRIX_COLS; c++) { \
-            ec_config.key_state[r][c].field = (val); \
-        } \
-    } \
-} while(0)
+#    define APPLY_TO_ALL_KEYS(field, val)                    \
+        do {                                                 \
+            for (uint8_t r = 0; r < MATRIX_ROWS; r++) {      \
+                for (uint8_t c = 0; c < MATRIX_COLS; c++) {  \
+                    ec_config.key_state[r][c].field = (val); \
+                }                                            \
+            }                                                \
+        } while (0)
 
 static void set_all_keys_apc_actuation(uint16_t value) {
     APPLY_TO_ALL_KEYS(apc_actuation_threshold, value);
@@ -115,7 +116,7 @@ void via_config_set_value(uint8_t *data) {
             uint8_t val = value_data[0];
             for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
                 for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-                    ec_config.key_state[r][c].switch_type = val;
+                    ec_config.key_state[r][c].switch_type        = val;
                     eeprom_ec_config.key_state[r][c].switch_type = val;
                 }
             }
@@ -136,7 +137,7 @@ void via_config_set_value(uint8_t *data) {
             uint8_t val = value_data[0];
             for (uint8_t r = 0; r < MATRIX_ROWS; r++) {
                 for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-                    ec_config.key_state[r][c].actuation_mode = val;
+                    ec_config.key_state[r][c].actuation_mode        = val;
                     eeprom_ec_config.key_state[r][c].actuation_mode = val;
                 }
             }
@@ -160,24 +161,24 @@ void via_config_set_value(uint8_t *data) {
             break;
         }
         case id_apc_release_threshold: {
-                uint16_t val = value_data[1] | (value_data[0] << 8);
-                set_all_keys_apc_release(val);
-                uprintf("APC Mode Release Threshold: %d\n", val);
+            uint16_t val = value_data[1] | (value_data[0] << 8);
+            set_all_keys_apc_release(val);
+            uprintf("APC Mode Release Threshold: %d\n", val);
             break;
         }
         case id_rt_initial_deadzone_offset: {
-                uint16_t val = value_data[1] | (value_data[0] << 8);
-                set_all_keys_rt_deadzone(val);
-                uprintf("Rapid Trigger Mode Initial Deadzone Offset: %d\n", val);
+            uint16_t val = value_data[1] | (value_data[0] << 8);
+            set_all_keys_rt_deadzone(val);
+            uprintf("Rapid Trigger Mode Initial Deadzone Offset: %d\n", val);
             break;
         }
         case id_rt_actuation_offset: {
-                set_all_keys_rt_actuation_offset(value_data[0]);
-                uprintf("Rapid Trigger Mode Actuation Offset: %d\n", value_data[0]);
+            set_all_keys_rt_actuation_offset(value_data[0]);
+            uprintf("Rapid Trigger Mode Actuation Offset: %d\n", value_data[0]);
             break;
         }
         case id_rt_release_offset: {
-                set_all_keys_rt_release_offset(value_data[0]);
+            set_all_keys_rt_release_offset(value_data[0]);
             uprintf("Rapid Trigger Mode Release Offset: %d\n", value_data[0]);
             break;
         }
@@ -196,7 +197,7 @@ void via_config_set_value(uint8_t *data) {
             break;
         }
         case id_save_threshold_data: {
-            ec_save_threshold_data(value_data[0]);
+            ec_save_threshold_data();
             break;
         }
         case id_noise_floor_calibration: {
@@ -419,30 +420,22 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     *command_id = id_unhandled;
 }
 
-// Rescale the values received by VIA to fit the new range
-void ec_rescale_values(uint8_t item) {
-    (void)item;  // Parameter ignored - rescale all keys uniformly
-    rescale_all_keys();
-}
-
-void ec_save_threshold_data(uint8_t option) {
-    (void)option;  // Option unused; all per-key data is saved
-
+static void ec_save_threshold_data() {
     // Save all per-key data to EEPROM
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             key_state_t *key_runtime = &ec_config.key_state[row][col];
-            key_state_t *key_eeprom = &eeprom_ec_config.key_state[row][col];
+            key_state_t *key_eeprom  = &eeprom_ec_config.key_state[row][col];
 
             // Copy all threshold and calibration data
-            key_eeprom->apc_actuation_threshold = key_runtime->apc_actuation_threshold;
-            key_eeprom->apc_release_threshold = key_runtime->apc_release_threshold;
+            key_eeprom->apc_actuation_threshold    = key_runtime->apc_actuation_threshold;
+            key_eeprom->apc_release_threshold      = key_runtime->apc_release_threshold;
             key_eeprom->rt_initial_deadzone_offset = key_runtime->rt_initial_deadzone_offset;
-            key_eeprom->rt_actuation_offset = key_runtime->rt_actuation_offset;
-            key_eeprom->rt_release_offset = key_runtime->rt_release_offset;
-            key_eeprom->bottoming_reading = key_runtime->bottoming_reading;
-            key_eeprom->actuation_mode = key_runtime->actuation_mode;
-            key_eeprom->switch_type = key_runtime->switch_type;
+            key_eeprom->rt_actuation_offset        = key_runtime->rt_actuation_offset;
+            key_eeprom->rt_release_offset          = key_runtime->rt_release_offset;
+            key_eeprom->bottoming_reading          = key_runtime->bottoming_reading;
+            key_eeprom->actuation_mode             = key_runtime->actuation_mode;
+            key_eeprom->switch_type                = key_runtime->switch_type;
         }
     }
 
@@ -456,11 +449,11 @@ void ec_save_threshold_data(uint8_t option) {
 }
 
 // Save the bottoming reading
-void ec_save_bottoming_reading(void) {
+static void ec_save_bottoming_reading(void) {
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             key_state_t *key_runtime = &ec_config.key_state[row][col];
-            key_state_t *key_eeprom = &eeprom_ec_config.key_state[row][col];
+            key_state_t *key_eeprom  = &eeprom_ec_config.key_state[row][col];
 
             // If the calibration starter flag is still set on the key, it indicates that the key was skipped during the scan because it is not physically present.
             // If the flag is not set, it means a bottoming reading was taken. If this reading doesn't exceed the noise floor by the BOTTOMING_CALIBRATION_THRESHOLD, it likely indicates one of the following:
@@ -480,7 +473,7 @@ void ec_save_bottoming_reading(void) {
 }
 
 // Show the calibration data
-void ec_show_calibration_data(void) {
+static void ec_show_calibration_data(void) {
     uprintf("\n################\n");
     uprintf("# Switch Type  #\n");
     uprintf("################\n");
@@ -594,7 +587,7 @@ void ec_show_calibration_data(void) {
 }
 
 // Clear the calibration data
-void ec_clear_bottoming_calibration_data(void) {
+static void ec_clear_bottoming_calibration_data(void) {
     // Clear the EEPROM data
     eeconfig_init_kb();
 
@@ -607,7 +600,7 @@ void ec_clear_bottoming_calibration_data(void) {
 }
 
 // Handle the SOCD pairs configuration
-uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t value) {
+static uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t value) {
     if (mode) { // set
         switch (field) {
             case 0: // enabled
