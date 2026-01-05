@@ -611,39 +611,39 @@ uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t 
     if (mode) { // set
         switch (field) {
             case 0: // enabled
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].resolution = value;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0]    = false;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1]    = false;
                 socd_opposing_pairs[pair_idx].resolution                  = value;
                 socd_opposing_pairs[pair_idx].held[0]                     = false;
                 socd_opposing_pairs[pair_idx].held[1]                     = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].resolution = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0]    = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1]    = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             case 1: // key 1
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].keys[0] = value;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0] = false;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1] = false;
                 socd_opposing_pairs[pair_idx].keys[0]                  = value;
                 socd_opposing_pairs[pair_idx].held[0]                  = false;
                 socd_opposing_pairs[pair_idx].held[1]                  = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].keys[0] = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0] = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1] = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             case 2: // key 2
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].keys[1] = value;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0] = false;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1] = false;
                 socd_opposing_pairs[pair_idx].keys[1]                  = value;
                 socd_opposing_pairs[pair_idx].held[0]                  = false;
                 socd_opposing_pairs[pair_idx].held[1]                  = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].keys[1] = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0] = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1] = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             case 3: // mode/resolution
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].resolution = value;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0]    = false;
-                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1]    = false;
                 socd_opposing_pairs[pair_idx].resolution                  = value;
                 socd_opposing_pairs[pair_idx].held[0]                     = false;
                 socd_opposing_pairs[pair_idx].held[1]                     = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].resolution = value;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[0]    = false;
+                eeprom_ec_config.socd_opposing_pairs[pair_idx].held[1]    = false;
                 eeconfig_update_kb_datablock_field(eeprom_ec_config, socd_opposing_pairs);
                 return 0;
             default:
