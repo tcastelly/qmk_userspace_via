@@ -84,7 +84,7 @@ void via_config_set_value(uint8_t *data) {
         case id_switch_type: {
             uint8_t value = value_data[0];
             // Update only the per-key switch_type field in runtime and EEPROM (shared offset)
-            update_keys_field(hybrid_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, switch_type), 0, &value, sizeof(uint8_t));
+            update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, switch_type), 0, &value, sizeof(uint8_t));
             if (value == 0) {
                 uprintf("#####################\n");
                 uprintf("#  Switch Type: EC  #\n");
@@ -99,7 +99,7 @@ void via_config_set_value(uint8_t *data) {
         case id_actuation_mode: {
             uint8_t value = value_data[0];
             // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
-            update_keys_field(hybrid_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, actuation_mode), 0, &value, sizeof(uint8_t));
+            update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, actuation_mode), 0, &value, sizeof(uint8_t));
             eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
             if (value == 0) {
                 uprintf("#########################\n");
@@ -114,31 +114,31 @@ void via_config_set_value(uint8_t *data) {
         }
         case id_apc_actuation_threshold: {
             uint16_t value = value_data[0] | (value_data[1] << 8);
-            update_keys_field(hybrid_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_actuation_threshold), 0, &value, sizeof(uint16_t));
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_actuation_threshold), 0, &value, sizeof(uint16_t));
             uprintf("APC Mode Actuation Threshold: %d\n", value);
             break;
         }
         case id_apc_release_threshold: {
             uint16_t value = value_data[0] | (value_data[1] << 8);
-            update_keys_field(hybrid_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_release_threshold), 0, &value, sizeof(uint16_t));
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_release_threshold), 0, &value, sizeof(uint16_t));
             uprintf("APC Mode Release Threshold: %d\n", value);
             break;
         }
         case id_rt_initial_deadzone_offset: {
             uint16_t value = value_data[0] | (value_data[1] << 8);
-            update_keys_field(hybrid_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_initial_deadzone_offset), 0, &value, sizeof(uint16_t));
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_initial_deadzone_offset), 0, &value, sizeof(uint16_t));
             uprintf("Rapid Trigger Mode Initial Deadzone Offset: %d\n", value);
             break;
         }
         case id_rt_actuation_offset: {
             uint8_t value = value_data[0];
-            update_keys_field(hybrid_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_actuation_offset), 0, &value, sizeof(uint8_t));
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_actuation_offset), 0, &value, sizeof(uint8_t));
             uprintf("Rapid Trigger Mode Actuation Offset: %d\n", value);
             break;
         }
         case id_rt_release_offset: {
             uint8_t value = value_data[0];
-            update_keys_field(hybrid_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_release_offset), 0, &value, sizeof(uint8_t));
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_release_offset), 0, &value, sizeof(uint8_t));
             uprintf("Rapid Trigger Mode Release Offset: %d\n", value);
             break;
         }
@@ -590,36 +590,36 @@ static uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, ui
     if (mode) { // set
         switch (field) {
             case 0: // enabled
-                socd_opposing_pairs[pair_idx].resolution                         = value;
-                socd_opposing_pairs[pair_idx].held[0]                            = false;
-                socd_opposing_pairs[pair_idx].held[1]                            = false;
+                socd_opposing_pairs[pair_idx].resolution                             = value;
+                socd_opposing_pairs[pair_idx].held[0]                                = false;
+                socd_opposing_pairs[pair_idx].held[1]                                = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].resolution = value;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[0]    = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[1]    = false;
                 eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_socd_opposing_pairs);
                 return 0;
             case 1: // key 1
-                socd_opposing_pairs[pair_idx].keys[0]                         = value;
-                socd_opposing_pairs[pair_idx].held[0]                         = false;
-                socd_opposing_pairs[pair_idx].held[1]                         = false;
+                socd_opposing_pairs[pair_idx].keys[0]                             = value;
+                socd_opposing_pairs[pair_idx].held[0]                             = false;
+                socd_opposing_pairs[pair_idx].held[1]                             = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].keys[0] = value;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[0] = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[1] = false;
                 eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_socd_opposing_pairs);
                 return 0;
             case 2: // key 2
-                socd_opposing_pairs[pair_idx].keys[1]                         = value;
-                socd_opposing_pairs[pair_idx].held[0]                         = false;
-                socd_opposing_pairs[pair_idx].held[1]                         = false;
+                socd_opposing_pairs[pair_idx].keys[1]                             = value;
+                socd_opposing_pairs[pair_idx].held[0]                             = false;
+                socd_opposing_pairs[pair_idx].held[1]                             = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].keys[1] = value;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[0] = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[1] = false;
                 eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_socd_opposing_pairs);
                 return 0;
             case 3: // mode/resolution
-                socd_opposing_pairs[pair_idx].resolution                         = value;
-                socd_opposing_pairs[pair_idx].held[0]                            = false;
-                socd_opposing_pairs[pair_idx].held[1]                            = false;
+                socd_opposing_pairs[pair_idx].resolution                             = value;
+                socd_opposing_pairs[pair_idx].held[0]                                = false;
+                socd_opposing_pairs[pair_idx].held[1]                                = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].resolution = value;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[0]    = false;
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[1]    = false;
