@@ -85,6 +85,7 @@ void via_config_set_value(uint8_t *data) {
             uint8_t value = value_data[0];
             // Update only the per-key switch_type field in runtime and EEPROM (shared offset)
             update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, switch_type), 0, &value, sizeof(uint8_t));
+            eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
             if (value == 0) {
                 uprintf("#####################\n");
                 uprintf("#  Switch Type: EC  #\n");
