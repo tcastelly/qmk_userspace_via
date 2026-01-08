@@ -13,30 +13,35 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "hybrid_switch_matrix.h"
 #include "action.h"
 #include "print.h"
 #include "via.h"
+#include <string.h>
+
+#ifdef SPLIT_KEYBOARD
+#    include "transactions.h"
+#    include "usb_descriptor.h"
+#endif
 
 #ifdef VIA_ENABLE
 
-void ec_rescale_values(uint8_t item);
-void ec_save_threshold_data(uint8_t option);
-void ec_save_bottoming_reading(void);
-void ec_show_calibration_data(void);
-void ec_clear_bottoming_calibration_data(void);
+// Function prototypes
+static void hybrid_save_threshold_data(uint8_t option);
+static void hybrid_save_bottoming_calibration_reading(void);
+static void hybrid_show_calibration_data(void);
+static void hybrid_clear_bottoming_calibration_data(void);
 
 // Declaring enums for VIA config menu
 enum via_enums {
     // clang-format off
     id_actuation_mode = 1,
-    id_mode_0_actuation_threshold = 2,
-    id_mode_0_release_threshold = 3,
+    id_apc_actuation_threshold = 2,
+    id_apc_release_threshold = 3,
     id_save_threshold_data = 4,
-    id_mode_1_initial_deadzone_offset = 5,
-    id_mode_1_actuation_offset = 6,
-    id_mode_1_release_offset = 7,
+    id_rt_initial_deadzone_offset = 5,
+    id_rt_actuation_offset = 6,
+    id_rt_release_offset = 7,
     id_bottoming_calibration = 8,
     id_noise_floor_calibration = 9,
     id_show_calibration_data = 10,
@@ -51,103 +56,127 @@ void via_config_set_value(uint8_t *data) {
     uint8_t *value_id   = &(data[0]);
     uint8_t *value_data = &(data[1]);
 
+// Forward the same data to the slave side in case of split keyboard
+#    ifdef SPLIT_KEYBOARD
+    if (is_keyboard_master()) {
+        transaction_rpc_send(RPC_ID_VIA_CMD, RAW_EPSIZE - 2, data);
+    }
+#    endif
+
     switch (*value_id) {
         case id_switch_type: {
-            eeprom_ec_config.switch_type = value_data[0];
-            ec_config.switch_type        = eeprom_ec_config.switch_type;
-            if (ec_config.switch_type == 0) {
+            uint8_t value = value_data[0];
+            // Update only the per-key switch_type field in runtime and EEPROM (shared offset)
+            update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, switch_type), 0, &value, sizeof(uint8_t));
+            eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
+            if (value == 0) {
                 uprintf("#####################\n");
                 uprintf("#  Switch Type: EC  #\n");
                 uprintf("#####################\n");
-            } else if (ec_config.switch_type == 1) {
+            } else if (value == 1) {
                 uprintf("###################\n");
-                uprintf("# Switch Type: MX #\n");
+                uprintf("#  Switch Type: MX  #\n");
                 uprintf("###################\n");
             }
-            eeconfig_update_kb_datablock_field(eeprom_ec_config, switch_type);
             break;
         }
         case id_actuation_mode: {
-            eeprom_ec_config.actuation_mode = value_data[0];
-            ec_config.actuation_mode        = eeprom_ec_config.actuation_mode;
-            if (ec_config.actuation_mode == 0) {
+            uint8_t value = value_data[0];
+            // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
+            update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, actuation_mode), 0, &value, sizeof(uint8_t));
+            eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
+            if (value == 0) {
                 uprintf("#########################\n");
                 uprintf("#  Actuation Mode: APC  #\n");
                 uprintf("#########################\n");
-            } else if (ec_config.actuation_mode == 1) {
+            } else if (value == 1) {
                 uprintf("#################################\n");
                 uprintf("# Actuation Mode: Rapid Trigger #\n");
                 uprintf("#################################\n");
             }
-            eeconfig_update_kb_datablock_field(eeprom_ec_config, actuation_mode);
             break;
         }
-        case id_mode_0_actuation_threshold: {
-            ec_config.mode_0_actuation_threshold = value_data[1] | (value_data[0] << 8);
-            uprintf("APC Mode Actuation Threshold: %d\n", ec_config.mode_0_actuation_threshold);
+        case id_apc_actuation_threshold: {
+            uint16_t value = value_data[1] | (value_data[0] << 8);
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_actuation_threshold), 0, &value, sizeof(uint16_t));
+            uprintf("APC Mode Actuation Threshold: %d\n", value);
             break;
         }
-        case id_mode_0_release_threshold: {
-            ec_config.mode_0_release_threshold = value_data[1] | (value_data[0] << 8);
-            uprintf("APC Mode Release Threshold: %d\n", ec_config.mode_0_release_threshold);
+        case id_apc_release_threshold: {
+            uint16_t value = value_data[1] | (value_data[0] << 8);
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_release_threshold), 0, &value, sizeof(uint16_t));
+            uprintf("APC Mode Release Threshold: %d\n", value);
             break;
         }
-        case id_mode_1_initial_deadzone_offset: {
-            ec_config.mode_1_initial_deadzone_offset = value_data[1] | (value_data[0] << 8);
-            uprintf("Rapid Trigger Mode Initial Deadzone Offset: %d\n", ec_config.mode_1_initial_deadzone_offset);
+        case id_rt_initial_deadzone_offset: {
+            uint16_t value = value_data[1] | (value_data[0] << 8);
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_initial_deadzone_offset), 0, &value, sizeof(uint16_t));
+            uprintf("Rapid Trigger Mode Initial Deadzone Offset: %d\n", value);
             break;
         }
-        case id_mode_1_actuation_offset: {
-            ec_config.mode_1_actuation_offset = value_data[0];
-            uprintf("Rapid Trigger Mode Actuation Offset: %d\n", ec_config.mode_1_actuation_offset);
+        case id_rt_actuation_offset: {
+            uint8_t value = value_data[0];
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_actuation_offset), 0, &value, sizeof(uint8_t));
+            uprintf("Rapid Trigger Mode Actuation Offset: %d\n", value);
             break;
         }
-        case id_mode_1_release_offset: {
-            ec_config.mode_1_release_offset = value_data[0];
-            uprintf("Rapid Trigger Mode Release Offset: %d\n", ec_config.mode_1_release_offset);
+        case id_rt_release_offset: {
+            uint8_t value = value_data[0];
+            update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_release_offset), 0, &value, sizeof(uint8_t));
+            uprintf("Rapid Trigger Mode Release Offset: %d\n", value);
             break;
         }
         case id_bottoming_calibration: {
-            if (value_data[0] == 1) {
-                ec_config.bottoming_calibration = true;
+            uint8_t value = value_data[0];
+            // 0: stop calibration and save, 1: start calibration
+            if (value == 1) {
+                // Set the bottoming calibration flag to true
+                runtime_hybrid_config.bottoming_calibration = true;
+                clear_keyboard();
                 uprintf("##############################\n");
                 uprintf("# Bottoming calibration mode #\n");
                 uprintf("##############################\n");
             } else {
-                ec_config.bottoming_calibration = false;
-                ec_save_bottoming_reading();
+                // Set the bottoming calibration flag to false and save readings
+                runtime_hybrid_config.bottoming_calibration = false;
+                clear_keyboard();
+                hybrid_save_bottoming_calibration_reading();
                 uprintf("## Bottoming calibration done ##\n");
-                ec_show_calibration_data();
+                hybrid_show_calibration_data();
             }
             break;
         }
         case id_save_threshold_data: {
-            ec_save_threshold_data(value_data[0]);
+            uint8_t value = value_data[0];
+            // 0: APC thresholds, 1: RT thresholds
+            hybrid_save_threshold_data(value);
             break;
         }
         case id_noise_floor_calibration: {
-            if (value_data[0] == 0) {
-                ec_noise_floor();
-                ec_rescale_values(0);
-                ec_rescale_values(1);
-                ec_rescale_values(2);
-                ec_rescale_values(3);
-                ec_rescale_values(4);
+            uint8_t value = value_data[0];
+            if (value == 0) {
+                // Perform noise floor calibration
+                hybrid_noise_floor_calibration(); // Note: noise floor calibration already rescales thresholds
                 uprintf("#############################\n");
                 uprintf("# Noise floor data acquired #\n");
                 uprintf("#############################\n");
                 break;
             }
+            break;
         }
         case id_show_calibration_data: {
-            if (value_data[0] == 0) {
-                ec_show_calibration_data();
+            uint8_t value = value_data[0];
+            if (value == 0) {
+                // Show calibration data
+                hybrid_show_calibration_data();
             }
             break;
         }
         case id_clear_bottoming_calibration_data: {
-            if (value_data[0] == 0) {
-                ec_clear_bottoming_calibration_data();
+            uint8_t value = value_data[0];
+            if (value == 0) {
+                // Clear bottoming calibration data
+                hybrid_clear_bottoming_calibration_data();
             }
             break;
         }
@@ -163,37 +192,40 @@ void via_config_get_value(uint8_t *data) {
     // data = [ value_id, value_data ]
     uint8_t *value_id   = &(data[0]);
     uint8_t *value_data = &(data[1]);
+    // Pointer to the first key's runtime state
+    // Hardcoded to [0][0] as for now every key has the same config
+    runtime_key_state_t *key_runtime = &runtime_hybrid_config.runtime_key_state[0][0];
 
     switch (*value_id) {
         case id_switch_type: {
-            value_data[0] = eeprom_ec_config.switch_type;
+            value_data[0] = key_runtime->switch_type;
             break;
         }
         case id_actuation_mode: {
-            value_data[0] = eeprom_ec_config.actuation_mode;
+            value_data[0] = key_runtime->actuation_mode;
             break;
         }
-        case id_mode_0_actuation_threshold: {
-            value_data[0] = eeprom_ec_config.mode_0_actuation_threshold >> 8;
-            value_data[1] = eeprom_ec_config.mode_0_actuation_threshold & 0xFF;
+        case id_apc_actuation_threshold: {
+            value_data[0] = key_runtime->apc_actuation_threshold >> 8;
+            value_data[1] = key_runtime->apc_actuation_threshold & 0xFF;
             break;
         }
-        case id_mode_0_release_threshold: {
-            value_data[0] = eeprom_ec_config.mode_0_release_threshold >> 8;
-            value_data[1] = eeprom_ec_config.mode_0_release_threshold & 0xFF;
+        case id_apc_release_threshold: {
+            value_data[0] = key_runtime->apc_release_threshold >> 8;
+            value_data[1] = key_runtime->apc_release_threshold & 0xFF;
             break;
         }
-        case id_mode_1_initial_deadzone_offset: {
-            value_data[0] = eeprom_ec_config.mode_1_initial_deadzone_offset >> 8;
-            value_data[1] = eeprom_ec_config.mode_1_initial_deadzone_offset & 0xFF;
+        case id_rt_initial_deadzone_offset: {
+            value_data[0] = key_runtime->rt_initial_deadzone_offset >> 8;
+            value_data[1] = key_runtime->rt_initial_deadzone_offset & 0xFF;
             break;
         }
-        case id_mode_1_actuation_offset: {
-            value_data[0] = eeprom_ec_config.mode_1_actuation_offset;
+        case id_rt_actuation_offset: {
+            value_data[0] = key_runtime->rt_actuation_offset;
             break;
         }
-        case id_mode_1_release_offset: {
-            value_data[0] = eeprom_ec_config.mode_1_release_offset;
+        case id_rt_release_offset: {
+            value_data[0] = key_runtime->rt_release_offset;
             break;
         }
         default: {
@@ -236,114 +268,183 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     *command_id = id_unhandled;
 }
 
-// Rescale the values received by VIA to fit the new range
-void ec_rescale_values(uint8_t item) {
-    switch (item) {
-        // Rescale the APC mode actuation thresholds
-        case 0:
-            ec_config.rescaled_mode_0_actuation_threshold = rescale(ec_config.mode_0_actuation_threshold, ec_config.noise_floor, eeprom_ec_config.bottoming_reading);
-            break;
-        // Rescale the APC mode release thresholds
-        case 1:
-            ec_config.rescaled_mode_0_release_threshold = rescale(ec_config.mode_0_release_threshold, ec_config.noise_floor, eeprom_ec_config.bottoming_reading);
-            break;
-        // Rescale the Rapid Trigger mode initial deadzone offsets
-        case 2:
-            ec_config.rescaled_mode_1_initial_deadzone_offset = rescale(ec_config.mode_1_initial_deadzone_offset, ec_config.noise_floor, eeprom_ec_config.bottoming_reading);
-            break;
-        // Rescale the Rapid Trigger mode actuation offsets
-        case 3:
-            ec_config.rescaled_mode_1_actuation_offset = rescale(ec_config.mode_1_actuation_offset, ec_config.noise_floor, eeprom_ec_config.bottoming_reading);
-            break;
-        // Rescale the Rapid Trigger mode release offsets
-        case 4:
-            ec_config.rescaled_mode_1_release_offset = rescale(ec_config.mode_1_release_offset, ec_config.noise_floor, eeprom_ec_config.bottoming_reading);
-            break;
-
-        default:
-            // Unhandled item.
-            break;
-    }
-}
-
-void ec_save_threshold_data(uint8_t option) {
+// Handle the application of new threshold data and save to EEPROM
+static void hybrid_save_threshold_data(uint8_t option) {
     // Save APC mode thresholds and rescale them for runtime usage
     if (option == 0) {
-        eeprom_ec_config.mode_0_actuation_threshold = ec_config.mode_0_actuation_threshold;
-        eeprom_ec_config.mode_0_release_threshold   = ec_config.mode_0_release_threshold;
-        ec_rescale_values(0);
-        ec_rescale_values(1);
+        for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+                // Get pointer to key state in runtime and EEPROM
+                runtime_key_state_t *key_runtime    = &runtime_hybrid_config.runtime_key_state[row][col];
+                eeprom_key_state_t  *key_eeprom     = &eeprom_hybrid_config.eeprom_key_state[row][col];
+                key_eeprom->apc_actuation_threshold = key_runtime->apc_actuation_threshold;
+                key_eeprom->apc_release_threshold   = key_runtime->apc_release_threshold;
+                // Rescale key thresholds based on new APC values
+                bulk_rescale_key_thresholds(key_runtime, key_eeprom, RESCALE_MODE_APC);
+            }
+        }
     }
     // Save Rapid Trigger mode thresholds and rescale them for runtime usage
     else if (option == 1) {
-        eeprom_ec_config.mode_1_initial_deadzone_offset = ec_config.mode_1_initial_deadzone_offset;
-        eeprom_ec_config.mode_1_actuation_offset        = ec_config.mode_1_actuation_offset;
-        eeprom_ec_config.mode_1_release_offset          = ec_config.mode_1_release_offset;
-        ec_rescale_values(2);
-        ec_rescale_values(3);
-        ec_rescale_values(4);
+        for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+            for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+                // Get pointer to key state in runtime and EEPROM
+                runtime_key_state_t *key_runtime       = &runtime_hybrid_config.runtime_key_state[row][col];
+                eeprom_key_state_t  *key_eeprom        = &eeprom_hybrid_config.eeprom_key_state[row][col];
+                key_eeprom->rt_initial_deadzone_offset = key_runtime->rt_initial_deadzone_offset;
+                key_eeprom->rt_actuation_offset        = key_runtime->rt_actuation_offset;
+                key_eeprom->rt_release_offset          = key_runtime->rt_release_offset;
+                // Rescale key thresholds based on new RT values
+                bulk_rescale_key_thresholds(key_runtime, key_eeprom, RESCALE_MODE_RT);
+            }
+        }
     }
-    eeconfig_update_kb_datablock(&eeprom_ec_config, 0, EECONFIG_KB_DATA_SIZE);
+    // Save to EEPROM the eeprom_key_state field
+    eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
     uprintf("####################################\n");
     uprintf("# New thresholds applied and saved #\n");
     uprintf("####################################\n");
 }
 
-// Save the bottoming reading
-void ec_save_bottoming_reading(void) {
-    // If the calibration starter flag is still set on the key, it indicates that the key was skipped during the scan because it is not physically present.
-    // If the flag is not set, it means a bottoming reading was taken. If this reading doesn't exceed the noise floor by the BOTTOMING_CALIBRATION_THRESHOLD, it likely indicates one of the following:
-    // 1. The key is part of an alternative layout and is not being pressed.
-    // 2. The key is in the current layout but is not being pressed.
-    // In both conditions we should set the bottoming reading to the maximum value to avoid false positives.
-    if (ec_config.bottoming_calibration_starter || ec_config.bottoming_reading < (ec_config.noise_floor + BOTTOMING_CALIBRATION_THRESHOLD)) {
-        eeprom_ec_config.bottoming_reading = 1023;
-    } else {
-        eeprom_ec_config.bottoming_reading = ec_config.bottoming_reading;
+// Handle the application of the bottoming calibration data and save to EEPROM
+static void hybrid_save_bottoming_calibration_reading(void) {
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+            // Get pointer to key state in runtime and EEPROM
+            runtime_key_state_t *key_runtime = &runtime_hybrid_config.runtime_key_state[row][col];
+            eeprom_key_state_t  *key_eeprom  = &eeprom_hybrid_config.eeprom_key_state[row][col];
+
+            // Validate bottoming calibration reading before saving:
+            // 1. If starter flag is still true: key never exceeded noise_floor + threshold during calibration
+            //    → Key was not pressed or is physically absent → save 1023 (max ADC value)
+            // 2. If starter flag is false but reading is below noise_floor + threshold: weak/invalid reading
+            //    → Likely unpressed alternative layout key or noise spike during init → save 1023
+            // 3. Otherwise: valid bottom-out peak captured → save actual reading
+            // Setting 1023 for invalid keys ensures their rescaled thresholds don't become unreasonably low
+            if (key_runtime->bottoming_calibration_starter || key_runtime->bottoming_calibration_reading < (key_runtime->noise_floor + BOTTOMING_CALIBRATION_THRESHOLD)) {
+                // Save max ADC value for invalid/no-press keys
+                key_runtime->bottoming_calibration_reading = 1023;
+                key_eeprom->bottoming_calibration_reading  = 1023;
+                // Rescale thresholds based on max bottoming value
+                bulk_rescale_key_thresholds(key_runtime, key_eeprom, RESCALE_MODE_ALL);
+            } else {
+                // Save the captured bottoming calibration reading
+                key_eeprom->bottoming_calibration_reading = key_runtime->bottoming_calibration_reading;
+                // Rescale all key thresholds based on new bottoming reading
+                bulk_rescale_key_thresholds(key_runtime, key_eeprom, RESCALE_MODE_ALL);
+            }
+        }
     }
-    // Rescale the values to fit the new range for runtime usage
-    ec_rescale_values(0);
-    ec_rescale_values(1);
-    ec_rescale_values(2);
-    ec_rescale_values(3);
-    ec_rescale_values(4);
-    eeconfig_update_kb_datablock(&eeprom_ec_config, 0, EECONFIG_KB_DATA_SIZE);
+    // Save to EEPROM the eeprom_key_state field
+    eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
 }
 
 // Show the calibration data
-void ec_show_calibration_data(void) {
+static void hybrid_show_calibration_data(void) {
+    uprintf("\n##################\n");
+    uprintf("# Actuation Mode #\n");
+    uprintf("##################\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", eeprom_hybrid_config.eeprom_key_state[row][col].actuation_mode);
+        }
+        uprintf("%4d\n", eeprom_hybrid_config.eeprom_key_state[row][MATRIX_COLS - 1].actuation_mode);
+    }
+
     uprintf("\n###############\n");
     uprintf("# Noise Floor #\n");
     uprintf("###############\n");
-    uprintf("%4d\n", ec_config.noise_floor);
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].noise_floor);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].noise_floor);
+    }
+
+    uprintf("\n############\n");
+    uprintf("# Extremum #\n");
+    uprintf("############\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].extremum);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].extremum);
+    }
 
     uprintf("\n######################\n");
     uprintf("# Bottoming Readings #\n");
     uprintf("######################\n");
-    uprintf("%4d\n", eeprom_ec_config.bottoming_reading);
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].bottoming_calibration_reading);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].bottoming_calibration_reading);
+    }
 
     uprintf("\n######################################\n");
-    uprintf("# Rescaled APC Mode Actuation Points #\n");
+    uprintf("# APC Mode Actuation Threshold       #\n");
     uprintf("######################################\n");
-    uprintf("Original APC Mode Actuation Point: %4d\n", ec_config.mode_0_actuation_threshold);
-    uprintf("%4d\n", ec_config.rescaled_mode_0_actuation_threshold);
+    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].apc_actuation_threshold);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_actuation_threshold);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_apc_actuation_threshold);
+    }
 
     uprintf("\n######################################\n");
-    uprintf("# Rescaled APC Mode Release Points   #\n");
+    uprintf("# APC Mode Release Threshold         #\n");
     uprintf("######################################\n");
-    uprintf("Original APC Mode Release Point: %4d\n", ec_config.mode_0_release_threshold);
-    uprintf("%4d\n", ec_config.rescaled_mode_0_release_threshold);
+    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].apc_release_threshold);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_release_threshold);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_apc_release_threshold);
+    }
 
     uprintf("\n#######################################################\n");
-    uprintf("# Rescaled Rapid Trigger Mode Initial Deadzone Offset #\n");
+    uprintf("# Rapid Trigger Mode Initial Deadzone Offset          #\n");
     uprintf("#######################################################\n");
-    uprintf("Original Rapid Trigger Mode Initial Deadzone Offset: %4d\n", ec_config.mode_1_initial_deadzone_offset);
-    uprintf("%4d\n", ec_config.rescaled_mode_1_initial_deadzone_offset);
+    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_initial_deadzone_offset);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_initial_deadzone_offset);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_initial_deadzone_offset);
+    }
+
+    uprintf("\n#######################################################\n");
+    uprintf("# Rapid Trigger Mode Actuation Offset                 #\n");
+    uprintf("#######################################################\n");
+    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_actuation_offset);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_actuation_offset);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_actuation_offset);
+    }
+
+    uprintf("\n#######################################################\n");
+    uprintf("# Rapid Trigger Mode Release Offset                   #\n");
+    uprintf("#######################################################\n");
+    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_release_offset);
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_release_offset);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_release_offset);
+    }
     print("\n");
 }
 
 // Clear the calibration data
-void ec_clear_bottoming_calibration_data(void) {
+static void hybrid_clear_bottoming_calibration_data(void) {
     // Clear the EEPROM data
     eeconfig_init_kb();
 
@@ -354,5 +455,16 @@ void ec_clear_bottoming_calibration_data(void) {
     uprintf("# Bottoming calibration data cleared #\n");
     uprintf("######################################\n");
 }
+
+// Slave handler for split keyboards
+#    ifdef SPLIT_KEYBOARD
+void via_cmd_slave_handler(uint8_t m2s_size, const void *m2s_buffer, uint8_t s2m_size, void *s2m_buffer) {
+    if (m2s_size == (RAW_EPSIZE - 2)) {
+        via_config_set_value((uint8_t *)m2s_buffer);
+    } else {
+        uprintf("Unexpected response in slave handler\n");
+    }
+}
+#    endif
 
 #endif // VIA_ENABLE
