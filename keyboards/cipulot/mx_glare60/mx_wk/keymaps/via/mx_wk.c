@@ -18,10 +18,11 @@
 #include "mx_wk.h"
 
 eeprom_mx_wk_config_t eeprom_mx_wk_config;
-socd_cleaner_t        socd_opposing_pairs[4];
+socd_cleaner_t          socd_opposing_pairs[4];
 
+// EEPROM default initialization
 void eeconfig_init_kb(void) {
-    // Default values
+    // Initialize indicator defaults
     eeprom_mx_wk_config.ind1.h       = 0;
     eeprom_mx_wk_config.ind1.s       = 255;
     eeprom_mx_wk_config.ind1.v       = 150;
@@ -47,26 +48,29 @@ void eeconfig_init_kb(void) {
         {KC_LEFT, KC_RIGHT},
     };
 
+    // Copy default SOCD pairs to EEPROM
     for (int i = 0; i < 4; i++) {
-        eeprom_mx_wk_config.socd_opposing_pairs[i].keys[0]    = socd_pairs[i].key1;
-        eeprom_mx_wk_config.socd_opposing_pairs[i].keys[1]    = socd_pairs[i].key2;
-        eeprom_mx_wk_config.socd_opposing_pairs[i].resolution = SOCD_CLEANER_OFF;
-        eeprom_mx_wk_config.socd_opposing_pairs[i].held[0]    = false;
-        eeprom_mx_wk_config.socd_opposing_pairs[i].held[1]    = false;
+        eeprom_mx_wk_config.eeprom_socd_opposing_pairs[i].keys[0]    = socd_pairs[i].key1;
+        eeprom_mx_wk_config.eeprom_socd_opposing_pairs[i].keys[1]    = socd_pairs[i].key2;
+        eeprom_mx_wk_config.eeprom_socd_opposing_pairs[i].resolution = SOCD_CLEANER_OFF;
+        eeprom_mx_wk_config.eeprom_socd_opposing_pairs[i].held[0]    = false;
+        eeprom_mx_wk_config.eeprom_socd_opposing_pairs[i].held[1]    = false;
     }
 
-    // Write default value to EEPROM now
+    // Write to EEPROM entire datablock
     eeconfig_update_kb_datablock(&eeprom_mx_wk_config, 0, EECONFIG_KB_DATA_SIZE);
 
+    // Call user initialization
     eeconfig_init_user();
 }
 
-// On Keyboard startup
+// Keyboard post-initialization
 void keyboard_post_init_kb(void) {
-    // Read custom menu variables from memory
+    // Read the EEPROM data block
     eeconfig_read_kb_datablock(&eeprom_mx_wk_config, 0, EECONFIG_KB_DATA_SIZE);
 
-    memcpy(socd_opposing_pairs, eeprom_mx_wk_config.socd_opposing_pairs, sizeof(socd_opposing_pairs));
+    // Copy SOCD cleaner pairs to runtime instance
+    memcpy(socd_opposing_pairs, eeprom_mx_wk_config.eeprom_socd_opposing_pairs, sizeof(socd_opposing_pairs));
 
     // Set the RGB LEDs range that will be used for the effects
     rgblight_set_effect_range(2, 1);
@@ -74,6 +78,7 @@ void keyboard_post_init_kb(void) {
     // Call the indicator callback to set the indicator color
     indicators_callback();
 
+    // Call user post-initialization
     keyboard_post_init_user();
 }
 
@@ -155,7 +160,6 @@ bool indicators_callback(void) {
     }
     return true;
 }
-
 uint8_t *pIndicators = (uint8_t *)&eeprom_mx_wk_config;
 
 indicator_config *get_indicator_p(int index) {
