@@ -16,5 +16,4 @@
 
 #pragma once
 
-#define VIA_EEPROM_LAYOUT_OPTIONS_SIZE 2
 #define VIA_FIRMWARE_VERSION 1

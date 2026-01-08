@@ -15,3 +15,4 @@
  */
 
 #define EECONFIG_KB_DATA_SIZE 38
+#define VIA_FIRMWARE_VERSION 1

@@ -48,22 +48,18 @@ enum via_enums {
     id_show_calibration_data = 10,
     id_clear_bottoming_calibration_data = 11,
     id_switch_type = 12,
-    id_socd_pair_1_enabled = 13,
+    id_socd_pair_1_mode = 13,
     id_socd_pair_1_key_1 = 14,
     id_socd_pair_1_key_2 = 15,
-    id_socd_pair_1_mode = 16,
-    id_socd_pair_2_enabled = 17,
-    id_socd_pair_2_key_1 = 18,
-    id_socd_pair_2_key_2 = 19,
-    id_socd_pair_2_mode = 20,
-    id_socd_pair_3_enabled = 21,
-    id_socd_pair_3_key_1 = 22,
-    id_socd_pair_3_key_2 = 23,
-    id_socd_pair_3_mode = 24,
-    id_socd_pair_4_enabled = 25,
-    id_socd_pair_4_key_1 = 26,
-    id_socd_pair_4_key_2 = 27,
-    id_socd_pair_4_mode = 28
+    id_socd_pair_2_mode = 16,
+    id_socd_pair_2_key_1 = 17,
+    id_socd_pair_2_key_2 = 18,
+    id_socd_pair_3_mode = 19,
+    id_socd_pair_3_key_1 = 20,
+    id_socd_pair_3_key_2 = 21,
+    id_socd_pair_4_mode = 22,
+    id_socd_pair_4_key_1 = 23,
+    id_socd_pair_4_key_2 = 24
     // clang-format on
 };
 
@@ -197,7 +193,7 @@ void via_config_set_value(uint8_t *data) {
             }
             break;
         }
-        case id_socd_pair_1_enabled:
+        case id_socd_pair_1_mode:
             socd_pair_handler(1, 0, 0, value_data[0]);
             break;
         case id_socd_pair_1_key_1:
@@ -206,10 +202,7 @@ void via_config_set_value(uint8_t *data) {
         case id_socd_pair_1_key_2:
             socd_pair_handler(1, 0, 2, value_data[1] | (value_data[0] << 8));
             break;
-        case id_socd_pair_1_mode:
-            socd_pair_handler(1, 0, 3, value_data[0]);
-            break;
-        case id_socd_pair_2_enabled:
+        case id_socd_pair_2_mode:
             socd_pair_handler(1, 1, 0, value_data[0]);
             break;
         case id_socd_pair_2_key_1:
@@ -218,10 +211,7 @@ void via_config_set_value(uint8_t *data) {
         case id_socd_pair_2_key_2:
             socd_pair_handler(1, 1, 2, value_data[1] | (value_data[0] << 8));
             break;
-        case id_socd_pair_2_mode:
-            socd_pair_handler(1, 1, 3, value_data[0]);
-            break;
-        case id_socd_pair_3_enabled:
+        case id_socd_pair_3_mode:
             socd_pair_handler(1, 2, 0, value_data[0]);
             break;
         case id_socd_pair_3_key_1:
@@ -230,10 +220,7 @@ void via_config_set_value(uint8_t *data) {
         case id_socd_pair_3_key_2:
             socd_pair_handler(1, 2, 2, value_data[1] | (value_data[0] << 8));
             break;
-        case id_socd_pair_3_mode:
-            socd_pair_handler(1, 2, 3, value_data[0]);
-            break;
-        case id_socd_pair_4_enabled:
+        case id_socd_pair_4_mode:
             socd_pair_handler(1, 3, 0, value_data[0]);
             break;
         case id_socd_pair_4_key_1:
@@ -241,9 +228,6 @@ void via_config_set_value(uint8_t *data) {
             break;
         case id_socd_pair_4_key_2:
             socd_pair_handler(1, 3, 2, value_data[1] | (value_data[0] << 8));
-            break;
-        case id_socd_pair_4_mode:
-            socd_pair_handler(1, 3, 3, value_data[0]);
             break;
         default: {
             // Unhandled value.
@@ -294,7 +278,7 @@ void via_config_get_value(uint8_t *data) {
             value_data[0] = key_runtime->rt_release_offset;
             break;
         }
-        case id_socd_pair_1_enabled:
+        case id_socd_pair_1_mode:
             value_data[0] = socd_pair_handler(0, 0, 0, 0);
             break;
         case id_socd_pair_1_key_1:
@@ -307,10 +291,7 @@ void via_config_get_value(uint8_t *data) {
             value_data[0]    = socd_pair_result >> 8;
             value_data[1]    = socd_pair_result & 0xFF;
             break;
-        case id_socd_pair_1_mode:
-            value_data[0] = socd_pair_handler(0, 0, 3, 0);
-            break;
-        case id_socd_pair_2_enabled:
+        case id_socd_pair_2_mode:
             value_data[0] = socd_pair_handler(0, 1, 0, 0);
             break;
         case id_socd_pair_2_key_1:
@@ -323,10 +304,7 @@ void via_config_get_value(uint8_t *data) {
             value_data[0]    = socd_pair_result >> 8;
             value_data[1]    = socd_pair_result & 0xFF;
             break;
-        case id_socd_pair_2_mode:
-            value_data[0] = socd_pair_handler(0, 1, 3, 0);
-            break;
-        case id_socd_pair_3_enabled:
+        case id_socd_pair_3_mode:
             value_data[0] = socd_pair_handler(0, 2, 0, 0);
             break;
         case id_socd_pair_3_key_1:
@@ -339,10 +317,7 @@ void via_config_get_value(uint8_t *data) {
             value_data[0]    = socd_pair_result >> 8;
             value_data[1]    = socd_pair_result & 0xFF;
             break;
-        case id_socd_pair_3_mode:
-            value_data[0] = socd_pair_handler(0, 2, 3, 0);
-            break;
-        case id_socd_pair_4_enabled:
+        case id_socd_pair_4_mode:
             value_data[0] = socd_pair_handler(0, 3, 0, 0);
             break;
         case id_socd_pair_4_key_1:
@@ -354,9 +329,6 @@ void via_config_get_value(uint8_t *data) {
             socd_pair_result = socd_pair_handler(0, 3, 2, 0);
             value_data[0]    = socd_pair_result >> 8;
             value_data[1]    = socd_pair_result & 0xFF;
-            break;
-        case id_socd_pair_4_mode:
-            value_data[0] = socd_pair_handler(0, 3, 3, 0);
             break;
         default: {
             // Unhandled value.
@@ -590,7 +562,7 @@ static void hybrid_clear_bottoming_calibration_data(void) {
 static uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, uint16_t value) {
     if (mode) { // set
         switch (field) {
-            case 0: // enabled
+            case 0: // mode/resolution
                 socd_opposing_pairs[pair_idx].resolution                             = value;
                 socd_opposing_pairs[pair_idx].held[0]                                = false;
                 socd_opposing_pairs[pair_idx].held[1]                                = false;
@@ -617,28 +589,17 @@ static uint16_t socd_pair_handler(bool mode, uint8_t pair_idx, uint8_t field, ui
                 eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[1] = false;
                 eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_socd_opposing_pairs);
                 return 0;
-            case 3: // mode/resolution
-                socd_opposing_pairs[pair_idx].resolution                             = value;
-                socd_opposing_pairs[pair_idx].held[0]                                = false;
-                socd_opposing_pairs[pair_idx].held[1]                                = false;
-                eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].resolution = value;
-                eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[0]    = false;
-                eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].held[1]    = false;
-                eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_socd_opposing_pairs);
-                return 0;
             default:
                 return 0;
         }
     } else { // get
         switch (field) {
-            case 0: // enabled
+            case 0: // mode/resolution
                 return eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].resolution;
             case 1: // key 1
                 return eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].keys[0];
             case 2: // key 2
                 return eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].keys[1];
-            case 3: // mode/resolution
-                return eeprom_hybrid_config.eeprom_socd_opposing_pairs[pair_idx].resolution;
             default:
                 return 0;
         }
