@@ -16,4 +16,5 @@
 
 #pragma once
 
+#define EECONFIG_KB_DATA_SIZE 20
 #define VIA_FIRMWARE_VERSION 1

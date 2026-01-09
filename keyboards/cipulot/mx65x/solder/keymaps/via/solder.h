@@ -18,27 +18,18 @@
 
 #include "quantum.h"
 #include "util.h"
+#include "socd_cleaner.h"
 
-typedef struct _indicator_config_t {
-    uint8_t h;
-    uint8_t s;
-    uint8_t v;
-    uint8_t func;
-    uint8_t index;
-    bool    enabled;
-} indicator_config;
-
+// EEPROM configuration structure definitions
 typedef struct PACKED {
-    indicator_config ind1;
-    indicator_config ind2;
-    indicator_config ind3;
-} eeprom_lily_config_t;
+    socd_cleaner_t   eeprom_socd_opposing_pairs[4]; // SOCD cleaner pairs
+} eeprom_mx_config_t;
 
-// Check if the size of the reserved persistent memory is the same as the size of struct eeprom_ec_config_t
-_Static_assert(sizeof(eeprom_lily_config_t) == EECONFIG_KB_DATA_SIZE, "Mismatch in keyboard EECONFIG stored data");
+// Compile-time check for EECONFIG_KB_DATA_SIZE
+_Static_assert(sizeof(eeprom_mx_config_t) == EECONFIG_KB_DATA_SIZE, "Mismatch in keyboard EECONFIG stored data");
 
-extern eeprom_lily_config_t eeprom_lily_config;
-
-bool              indicators_callback(void);
-uint8_t          *pIndicators;
-indicator_config *get_indicator_p(int index);
+// Extern declarations
+extern eeprom_mx_config_t eeprom_mx_config;
+// Runtime SOCD cleaner pairs
+// For now it can't be part of runtime_ec_config_t due to how the submodule checks for the existance of the structure
+extern socd_cleaner_t socd_opposing_pairs[4];
