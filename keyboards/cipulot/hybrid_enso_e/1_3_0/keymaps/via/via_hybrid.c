@@ -132,7 +132,7 @@ enum via_enums {
     id_rt_initial_deadzone_offset_key_12 = 82,
     id_rt_actuation_offset_key_12 = 83,
     id_rt_release_offset_key_12 = 84,
-    // General Keys
+    // Full Board or General Cluster
     id_actuation_mode = 85,
     id_apc_actuation_threshold = 86,
     id_apc_release_threshold = 87,
@@ -156,7 +156,8 @@ enum via_enums {
     id_socd_pair_3_key_2 = 105,
     id_socd_pair_4_mode = 106,
     id_socd_pair_4_key_1 = 107,
-    id_socd_pair_4_key_2 = 108
+    id_socd_pair_4_key_2 = 108,
+    id_board_mode = 109,
     // clang-format on
 };
 
@@ -250,66 +251,186 @@ void via_config_set_value(uint8_t *data) {
         }
     } else {
         switch (*value_id) {
+            case id_board_mode: {
+                uint8_t value = value_data[0];
+                // Update board mode in runtime and EEPROM
+                runtime_hybrid_config.board_mode = value;
+                eeprom_hybrid_config.board_mode  = value;
+                eeconfig_update_kb_datablock_field(eeprom_hybrid_config, board_mode);
+                if (value == 0) {
+                    uprintf("#########################\n");
+                    uprintf("#  Board Mode: Full EC  #\n");
+                    uprintf("#########################\n");
+                } else if (value == 1) {
+                    uprintf("#########################\n");
+                    uprintf("#  Board Mode: Full MX  #\n");
+                    uprintf("#########################\n");
+                } else if (value == 2) {
+                    uprintf("########################\n");
+                    uprintf("#  Board Mode: Hybrid  #\n");
+                    uprintf("########################\n");
+                }
+                break;
+            }
             case id_switch_type: {
                 uint8_t value = value_data[0];
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_switch_type = value;
+                eeprom_hybrid_config.board_switch_type  = value;
                 // Update only the per-key switch_type field in runtime and EEPROM (shared offset)
                 update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, switch_type), 0, &value, sizeof(uint8_t));
+                eeconfig_update_kb_datablock_field(eeprom_hybrid_config, board_switch_type);
                 eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
                 if (value == 0) {
-                    uprintf("#####################\n");
-                    uprintf("#  Switch Type: EC  #\n");
-                    uprintf("#####################\n");
+                    uprintf("##################################\n");
+                    uprintf("#  Main Cluster Switch Type: EC  #\n");
+                    uprintf("##################################\n");
                 } else if (value == 1) {
-                    uprintf("###################\n");
-                    uprintf("#  Switch Type: MX  #\n");
-                    uprintf("###################\n");
+                    uprintf("##################################\n");
+                    uprintf("#  Main Cluster Switch Type: MX  #\n");
+                    uprintf("##################################\n");
                 }
                 break;
             }
             case id_actuation_mode: {
                 uint8_t value = value_data[0];
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_actuation_mode = value;
+                eeprom_hybrid_config.board_actuation_mode  = value;
                 // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
                 update_keys_field(HYBRID_UPDATE_SHARED_OFFSET, offsetof(runtime_key_state_t, actuation_mode), 0, &value, sizeof(uint8_t));
+                eeconfig_update_kb_datablock_field(eeprom_hybrid_config, board_actuation_mode);
                 eeconfig_update_kb_datablock_field(eeprom_hybrid_config, eeprom_key_state);
-                if (value == 0) {
-                    uprintf("#########################\n");
-                    uprintf("#  Actuation Mode: APC  #\n");
-                    uprintf("#########################\n");
-                } else if (value == 1) {
-                    uprintf("#################################\n");
-                    uprintf("# Actuation Mode: Rapid Trigger #\n");
-                    uprintf("#################################\n");
+                if (runtime_hybrid_config.board_mode == BOARD_MODE_EC) {
+                    if (value == 0) {
+                        uprintf("######################################\n");
+                        uprintf("#  Full Board Actuation Mode: APC  #\n");
+                        uprintf("######################################\n");
+                    } else if (value == 1) {
+                        uprintf("##############################################\n");
+                        uprintf("# Full Board Actuation Mode: Rapid Trigger #\n");
+                        uprintf("##############################################\n");
+                    }
+                } else if (runtime_hybrid_config.board_mode == BOARD_MODE_HYBRID && runtime_hybrid_config.board_switch_type == SWITCH_TYPE_EC) {
+                    if (value == 0) {
+                        uprintf("######################################\n");
+                        uprintf("#  Main Cluster Actuation Mode: APC  #\n");
+                        uprintf("######################################\n");
+                    } else if (value == 1) {
+                        uprintf("##############################################\n");
+                        uprintf("# Main Cluster Actuation Mode: Rapid Trigger #\n");
+                        uprintf("##############################################\n");
+                    }
                 }
                 break;
             }
             case id_apc_actuation_threshold: {
                 uint16_t value = value_data[1] | (value_data[0] << 8);
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_apc_actuation_threshold = value;
+                eeprom_hybrid_config.board_apc_actuation_threshold  = value;
+                // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
                 update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_actuation_threshold), 0, &value, sizeof(uint16_t));
-                uprintf("APC Mode Actuation Threshold: %d\n", value);
+                if (runtime_hybrid_config.board_mode == BOARD_MODE_EC) {
+                    if (value == 0) {
+                        uprintf("Full Board Actuation Threshold: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Full Board Actuation Threshold: %d\n", value);
+                    }
+                } else if (runtime_hybrid_config.board_mode == BOARD_MODE_HYBRID && runtime_hybrid_config.board_switch_type == SWITCH_TYPE_EC) {
+                    if (value == 0) {
+                        uprintf("Main Cluster Actuation Threshold: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Main Cluster Actuation Threshold: %d\n", value);
+                    }
+                }
                 break;
             }
             case id_apc_release_threshold: {
                 uint16_t value = value_data[1] | (value_data[0] << 8);
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_apc_release_threshold = value;
+                eeprom_hybrid_config.board_apc_release_threshold  = value;
                 update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, apc_release_threshold), 0, &value, sizeof(uint16_t));
-                uprintf("APC Mode Release Threshold: %d\n", value);
+                if (runtime_hybrid_config.board_mode == BOARD_MODE_EC) {
+                    if (value == 0) {
+                        uprintf("Full Board Release Threshold: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Full Board Release Threshold: %d\n", value);
+                    }
+                } else if (runtime_hybrid_config.board_mode == BOARD_MODE_HYBRID && runtime_hybrid_config.board_switch_type == SWITCH_TYPE_EC) {
+                    if (value == 0) {
+                        uprintf("Main Cluster Release Threshold: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Main Cluster Release Threshold: %d\n", value);
+                    }
+                }
                 break;
             }
             case id_rt_initial_deadzone_offset: {
                 uint16_t value = value_data[1] | (value_data[0] << 8);
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_rt_initial_deadzone_offset = value;
+                eeprom_hybrid_config.board_rt_initial_deadzone_offset  = value;
+                // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
                 update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_initial_deadzone_offset), 0, &value, sizeof(uint16_t));
-                uprintf("Rapid Trigger Mode Initial Deadzone Offset: %d\n", value);
+                if (runtime_hybrid_config.board_mode == BOARD_MODE_EC) {
+                    if (value == 0) {
+                        uprintf("Full Board Rapid Trigger Initial Deadzone Offset: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Full Board Rapid Trigger Initial Deadzone Offset: %d\n", value);
+                    }
+                } else if (runtime_hybrid_config.board_mode == BOARD_MODE_HYBRID && runtime_hybrid_config.board_switch_type == SWITCH_TYPE_EC) {
+                    if (value == 0) {
+                        uprintf("Main Cluster Rapid Trigger Initial Deadzone Offset: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Main Cluster Rapid Trigger Initial Deadzone Offset: %d\n", value);
+                    }
+                }
                 break;
             }
             case id_rt_actuation_offset: {
                 uint8_t value = value_data[0];
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_rt_actuation_offset = value;
+                eeprom_hybrid_config.board_rt_actuation_offset  = value;
+                // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
                 update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_actuation_offset), 0, &value, sizeof(uint8_t));
-                uprintf("Rapid Trigger Mode Actuation Offset: %d\n", value);
+                if (runtime_hybrid_config.board_mode == BOARD_MODE_EC) {
+                    if (value == 0) {
+                        uprintf("Full Board Rapid Trigger Actuation Offset: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Full Board Rapid Trigger Actuation Offset: %d\n", value);
+                    }
+                } else if (runtime_hybrid_config.board_mode == BOARD_MODE_HYBRID && runtime_hybrid_config.board_switch_type == SWITCH_TYPE_EC) {
+                    if (value == 0) {
+                        uprintf("Main Cluster Rapid Trigger Actuation Offset: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Main Cluster Rapid Trigger Actuation Offset: %d\n", value);
+                    }
+                }
                 break;
             }
             case id_rt_release_offset: {
                 uint8_t value = value_data[0];
+                // Update switch type in runtime and EEPROM for full board
+                runtime_hybrid_config.board_rt_release_offset = value;
+                eeprom_hybrid_config.board_rt_release_offset  = value;
+                // Update only the per-key actuation_mode field in runtime and EEPROM (shared offset)
                 update_keys_field(HYBRID_UPDATE_RUNTIME_ONLY, offsetof(runtime_key_state_t, rt_release_offset), 0, &value, sizeof(uint8_t));
-                uprintf("Rapid Trigger Mode Release Offset: %d\n", value);
+                if (runtime_hybrid_config.board_mode == BOARD_MODE_EC) {
+                    if (value == 0) {
+                        uprintf("Full Board Rapid Trigger Release Offset: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Full Board Rapid Trigger Release Offset: %d\n", value);
+                    }
+                } else if (runtime_hybrid_config.board_mode == BOARD_MODE_HYBRID && runtime_hybrid_config.board_switch_type == SWITCH_TYPE_EC) {
+                    if (value == 0) {
+                        uprintf("Main Cluster Rapid Trigger Release Offset: %d\n", value);
+                    } else if (value == 1) {
+                        uprintf("Main Cluster Rapid Trigger Release Offset: %d\n", value);
+                    }
+                }
                 break;
             }
             case id_bottoming_calibration: {
@@ -460,39 +581,40 @@ void via_config_get_value(uint8_t *data) {
             }
         }
     } else {
-        // Pointer to the first key's runtime state
-        // Hardcoded to [0][0] as for now every key has the same config
-        runtime_key_state_t *key_runtime = &runtime_hybrid_config.runtime_key_state[0][0];
         switch (*value_id) {
+            case id_board_mode: {
+                value_data[0] = runtime_hybrid_config.board_mode;
+                break;
+            }
             case id_switch_type: {
-                value_data[0] = key_runtime->switch_type;
+                value_data[0] = runtime_hybrid_config.board_switch_type;
                 break;
             }
             case id_actuation_mode: {
-                value_data[0] = key_runtime->actuation_mode;
+                value_data[0] = runtime_hybrid_config.board_actuation_mode;
                 break;
             }
             case id_apc_actuation_threshold: {
-                value_data[0] = key_runtime->apc_actuation_threshold >> 8;
-                value_data[1] = key_runtime->apc_actuation_threshold & 0xFF;
+                value_data[0] = runtime_hybrid_config.board_apc_actuation_threshold >> 8;
+                value_data[1] = runtime_hybrid_config.board_apc_actuation_threshold & 0xFF;
                 break;
             }
             case id_apc_release_threshold: {
-                value_data[0] = key_runtime->apc_release_threshold >> 8;
-                value_data[1] = key_runtime->apc_release_threshold & 0xFF;
+                value_data[0] = runtime_hybrid_config.board_apc_release_threshold >> 8;
+                value_data[1] = runtime_hybrid_config.board_apc_release_threshold & 0xFF;
                 break;
             }
             case id_rt_initial_deadzone_offset: {
-                value_data[0] = key_runtime->rt_initial_deadzone_offset >> 8;
-                value_data[1] = key_runtime->rt_initial_deadzone_offset & 0xFF;
+                value_data[0] = runtime_hybrid_config.board_rt_initial_deadzone_offset >> 8;
+                value_data[1] = runtime_hybrid_config.board_rt_initial_deadzone_offset & 0xFF;
                 break;
             }
             case id_rt_actuation_offset: {
-                value_data[0] = key_runtime->rt_actuation_offset;
+                value_data[0] = runtime_hybrid_config.board_rt_actuation_offset;
                 break;
             }
             case id_rt_release_offset: {
-                value_data[0] = key_runtime->rt_release_offset;
+                value_data[0] = runtime_hybrid_config.board_rt_release_offset;
                 break;
             }
             case id_socd_pair_1_mode:
@@ -663,14 +785,99 @@ static void hybrid_save_bottoming_calibration_reading(void) {
 
 // Show the calibration data
 static void hybrid_show_calibration_data(void) {
-    uprintf("\n##################\n");
-    uprintf("# Actuation Mode #\n");
-    uprintf("##################\n");
+    uprintf("\n#######################\n");
+    uprintf("# Board Wide Settings #\n");
+    uprintf("#######################\n\n");
+    uprintf("Board Mode: %s\n", runtime_hybrid_config.board_mode == 0 ? "BOARD_MODE_EC" : runtime_hybrid_config.board_mode == 1 ? "BOARD_MODE_MX" : runtime_hybrid_config.board_mode == 2 ? "BOARD_MODE_HYBRID" : "UNKNOWN");
+    uprintf("Board Switch Type: %s\n", runtime_hybrid_config.board_switch_type == 0 ? "SWITCH_TYPE_EC" : runtime_hybrid_config.board_switch_type == 1 ? "SWITCH_TYPE_MX" : "UNKNOWN");
+    uprintf("Board Actuation Mode: %s\n", runtime_hybrid_config.board_actuation_mode == 0 ? "ACTUATION_MODE_APC" : runtime_hybrid_config.board_actuation_mode == 1 ? "ACTUATION_MODE_RAPID_TRIGGER" : "UNKNOWN");
+    uprintf("Board APC Actuation Threshold: %d\n", runtime_hybrid_config.board_apc_actuation_threshold);
+    uprintf("Board APC Release Threshold: %d\n", runtime_hybrid_config.board_apc_release_threshold);
+    uprintf("Board RT Initial Deadzone Offset: %d\n", runtime_hybrid_config.board_rt_initial_deadzone_offset);
+    uprintf("Board RT Actuation Offset: %d\n", runtime_hybrid_config.board_rt_actuation_offset);
+    uprintf("Board RT Release Offset: %d\n", runtime_hybrid_config.board_rt_release_offset);
+
+    uprintf("\n###############################################################################\n");
+
+    uprintf("\n####################\n");
+    uprintf("# Per-key Settings #\n");
+    uprintf("####################\n\n");
+
+    uprintf("\n#######################\n");
+    uprintf("# Per-key Switch Type #\n");
+    uprintf("#######################\n");
+    uprintf("Switch Type: 0 -> EC | 1 -> MX\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", eeprom_hybrid_config.eeprom_key_state[row][col].switch_type);
+        }
+        uprintf("%4d\n", eeprom_hybrid_config.eeprom_key_state[row][MATRIX_COLS - 1].switch_type);
+    }
+
+    uprintf("\n##########################\n");
+    uprintf("# Per-key Actuation Mode #\n");
+    uprintf("##########################\n");
+    uprintf("Actuation Mode: 0 -> APC | 1 -> Rapid Trigger\n");
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", eeprom_hybrid_config.eeprom_key_state[row][col].actuation_mode);
         }
         uprintf("%4d\n", eeprom_hybrid_config.eeprom_key_state[row][MATRIX_COLS - 1].actuation_mode);
+    }
+
+    uprintf("\n###################################\n");
+    uprintf("# Per-key APC Actuation Threshold #\n");
+    uprintf("###################################\n");
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_actuation_threshold);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_apc_actuation_threshold);
+    }
+
+    uprintf("\n#################################\n");
+    uprintf("# Per-key APC Release Threshold #\n");
+    uprintf("#################################\n");
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_release_threshold);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_apc_release_threshold);
+    }
+
+    uprintf("\n######################################\n");
+    uprintf("# Per-key RT Initial Deadzone Offset #\n");
+    uprintf("######################################\n");
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_initial_deadzone_offset);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_initial_deadzone_offset);
+    }
+
+    uprintf("\n###############################\n");
+    uprintf("# Per-key RT Actuation Offset #\n");
+    uprintf("###############################\n");
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_actuation_offset);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_actuation_offset);
+    }
+
+    uprintf("\n#############################\n");
+    uprintf("# Per-key RT Release Offset #\n");
+    uprintf("#############################\n");
+    uprintf("Rescaled Values:\n");
+    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
+            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_release_offset);
+        }
+        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_release_offset);
     }
 
     uprintf("\n###############\n");
@@ -702,67 +909,7 @@ static void hybrid_show_calibration_data(void) {
         }
         uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].bottoming_calibration_reading);
     }
-
-    uprintf("\n######################################\n");
-    uprintf("# APC Mode Actuation Threshold       #\n");
-    uprintf("######################################\n");
-    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].apc_actuation_threshold);
-    uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
-            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_actuation_threshold);
-        }
-        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_apc_actuation_threshold);
-    }
-
-    uprintf("\n######################################\n");
-    uprintf("# APC Mode Release Threshold         #\n");
-    uprintf("######################################\n");
-    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].apc_release_threshold);
-    uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
-            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_release_threshold);
-        }
-        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_apc_release_threshold);
-    }
-
-    uprintf("\n#######################################################\n");
-    uprintf("# Rapid Trigger Mode Initial Deadzone Offset          #\n");
-    uprintf("#######################################################\n");
-    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_initial_deadzone_offset);
-    uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
-            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_initial_deadzone_offset);
-        }
-        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_initial_deadzone_offset);
-    }
-
-    uprintf("\n#######################################################\n");
-    uprintf("# Rapid Trigger Mode Actuation Offset                 #\n");
-    uprintf("#######################################################\n");
-    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_actuation_offset);
-    uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
-            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_actuation_offset);
-        }
-        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_actuation_offset);
-    }
-
-    uprintf("\n#######################################################\n");
-    uprintf("# Rapid Trigger Mode Release Offset                   #\n");
-    uprintf("#######################################################\n");
-    uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_release_offset);
-    uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
-            uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_release_offset);
-        }
-        uprintf("%4d\n", runtime_hybrid_config.runtime_key_state[row][MATRIX_COLS - 1].rescaled_rt_release_offset);
-    }
-    print("\n");
+    print("\n\n\n");
 }
 
 // Clear the calibration data
