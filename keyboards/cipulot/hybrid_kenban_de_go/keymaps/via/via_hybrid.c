@@ -374,7 +374,7 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
 static void hybrid_save_threshold_data(uint8_t option) {
     // Save APC mode thresholds and rescale them for runtime usage
     if (option == 0) {
-        for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
             for (uint8_t col = 0; col < MATRIX_COLS; col++) {
                 // Get pointer to key state in runtime and EEPROM
                 runtime_key_state_t *key_runtime    = &runtime_hybrid_config.runtime_key_state[row][col];
@@ -388,7 +388,7 @@ static void hybrid_save_threshold_data(uint8_t option) {
     }
     // Save Rapid Trigger mode thresholds and rescale them for runtime usage
     else if (option == 1) {
-        for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+        for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
             for (uint8_t col = 0; col < MATRIX_COLS; col++) {
                 // Get pointer to key state in runtime and EEPROM
                 runtime_key_state_t *key_runtime       = &runtime_hybrid_config.runtime_key_state[row][col];
@@ -410,7 +410,7 @@ static void hybrid_save_threshold_data(uint8_t option) {
 
 // Handle the application of the bottoming calibration data and save to EEPROM
 static void hybrid_save_bottoming_calibration_reading(void) {
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
             // Get pointer to key state in runtime and EEPROM
             runtime_key_state_t *key_runtime = &runtime_hybrid_config.runtime_key_state[row][col];
@@ -446,7 +446,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("\n##################\n");
     uprintf("# Actuation Mode #\n");
     uprintf("##################\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", eeprom_hybrid_config.eeprom_key_state[row][col].actuation_mode);
         }
@@ -456,7 +456,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("\n###############\n");
     uprintf("# Noise Floor #\n");
     uprintf("###############\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].noise_floor);
         }
@@ -466,7 +466,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("\n############\n");
     uprintf("# Extremum #\n");
     uprintf("############\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].extremum);
         }
@@ -476,7 +476,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("\n######################\n");
     uprintf("# Bottoming Readings #\n");
     uprintf("######################\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].bottoming_calibration_reading);
         }
@@ -488,7 +488,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("######################################\n");
     uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].apc_actuation_threshold);
     uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_actuation_threshold);
         }
@@ -500,7 +500,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("######################################\n");
     uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].apc_release_threshold);
     uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_apc_release_threshold);
         }
@@ -512,7 +512,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("#######################################################\n");
     uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_initial_deadzone_offset);
     uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_initial_deadzone_offset);
         }
@@ -524,7 +524,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("#######################################################\n");
     uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_actuation_offset);
     uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_actuation_offset);
         }
@@ -536,7 +536,7 @@ static void hybrid_show_calibration_data(void) {
     uprintf("#######################################################\n");
     uprintf("Original Value: %4d\n", eeprom_hybrid_config.eeprom_key_state[0][0].rt_release_offset);
     uprintf("Rescaled Values:\n");
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
+    for (uint8_t row = 0; row < MATRIX_ROWS_PER_HAND; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS - 1; col++) {
             uprintf("%4d,", runtime_hybrid_config.runtime_key_state[row][col].rescaled_rt_release_offset);
         }
